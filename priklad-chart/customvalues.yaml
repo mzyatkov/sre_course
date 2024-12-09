@@ -1,0 +1,20 @@
+resources: 
+   limits:
+     cpu: 100m
+     memory: 256Mi
+   requests:
+     cpu: 100m
+     memory: 256Mi
+livenessProbe:
+  httpGet:
+    path: /healthz/live
+    port: 80
+readinessProbe:
+  httpGet:
+    path: /healthz/ready
+    port: 80
+
+env:
+  CONNECTIONSTRINGS__PGCONNECTION: Server=192.168.1.11;Port=5432;User id=postgres;Database=postgres;password=secretpassword;
+  ASPNETCORE_ENVIRONMENT: "1"
+  ASPNETCORE_URLS: http://*:80
