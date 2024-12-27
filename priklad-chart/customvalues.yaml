@@ -15,6 +15,6 @@ readinessProbe:
     port: 80
 
 env:
-  CONNECTIONSTRINGS__PGCONNECTION: Server=192.168.1.11;Port=5432;User id=postgres;Database=postgres;password=secretpassword;
+  CONNECTIONSTRINGS__PGCONNECTION: Server=192.168.1.10;Port=5432;User id=postgres;Database=postgres;password=secretpassword;
   ASPNETCORE_ENVIRONMENT: "1"
   ASPNETCORE_URLS: http://*:80
