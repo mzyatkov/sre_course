@@ -1,0 +1,29 @@
+---
+- name: Copy postgres_exporter binary
+  copy:
+    src: roles/postgres_exporter/files/postgres_exporter
+    dest: /usr/local/bin/postgres_exporter
+    mode: '0755'
+
+- name: Create Postgres exporter systemd service
+  copy:
+    dest: /etc/systemd/system/postgres_exporter.service
+    content: |
+      [Unit]
+      Description=Prometheus Postgres Exporter
+      After=network.target
+
+      [Service]
+      User=root
+      Group=root
+      ExecStart=DATA_SOURCE_URI="localhost:5432/postgres?sslmode=disable" DATA_SOURCE_USER="postgres" DATA_SOURCE_PASS="secretpassword" /usr/local/bin/postgres_exporter --
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Start postgres_exporter
+  systemd:
+    name: postgres_exporter
+    state: started
+    enabled: yes

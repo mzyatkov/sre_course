@@ -1,0 +1,130 @@
+---
+- name: Create prometheus user and group if needed
+  become: true
+  ansible.builtin.user:
+    name: "{{ prometheus_user }}"
+    system: yes
+    createhome: no
+    shell: /usr/sbin/nologin
+
+- name: Copy Prometheus binary
+  copy:
+    src: roles/prometheus/files/prometheus
+    dest: /usr/local/bin/prometheus
+    mode: '0755'
+
+- name: Copy promtool binary
+  copy:
+    src: roles/prometheus/files/promtool
+    dest: /usr/local/bin/promtool
+    mode: '0755'
+
+- name: Copy Alertmanager binary
+  copy:
+    src: roles/prometheus/files/alertmanager
+    dest: /usr/local/bin/alertmanager
+    mode: '0755'
+
+- name: Copy amtool binary
+  copy:
+    src: roles/prometheus/files/amtool
+    dest: /usr/local/bin/amtool
+    mode: '0755'
+
+- name: Create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0755'
+  loop:
+    - "{{ prometheus_dir }}"
+    - "{{ prometheus_data_dir }}"
+
+- name: Configure Prometheus
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_dir }}/prometheus.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0644'
+  notify:
+    - restart prometheus
+
+- name: Configure Alertmanager
+  file:
+    path: /etc/alertmanager
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0755'
+
+- name: Create Alertmanager data directory
+  file:
+    path: /var/lib/alertmanager
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0755'
+
+- name: Copy alertmanager config
+  template:
+    src: alertmanager.yml.j2
+    dest: "/etc/alertmanager/alertmanager.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0644'
+  notify:
+    - restart alertmanager
+
+- name: Create Prometheus systemd service
+  copy:
+    dest: /etc/systemd/system/prometheus.service
+    content: |
+      [Unit]
+      Description=Prometheus
+      After=network.target
+
+      [Service]
+      User={{ prometheus_user }}
+      Group={{ prometheus_group }}
+      ExecStart=/usr/local/bin/prometheus --config.file={{ prometheus_dir }}/prometheus.yml --storage.tsdb.path={{ prometheus_data_dir }}
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - daemon reload
+
+- name: Create Alertmanager systemd service
+  copy:
+    dest: /etc/systemd/system/alertmanager.service
+    content: |
+      [Unit]
+      Description=Alertmanager
+      After=network.target
+
+      [Service]
+      User={{ prometheus_user }}
+      Group={{ prometheus_group }}
+      ExecStart=/usr/local/bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/var/lib/alertmanager
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - daemon reload
+    - restart alertmanager
+
+- name: Start Prometheus
+  systemd:
+    name: prometheus
+    state: started
+    enabled: yes
+
+- name: Start Alertmanager
+  systemd:
+    name: alertmanager
+    state: started
+    enabled: yes

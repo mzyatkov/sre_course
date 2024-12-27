@@ -1,0 +1,97 @@
+---
+- name: Install and configure exporters and Prometheus stack
+  hosts: all
+  become: true
+  vars:
+    prometheus_version: "2.45.0"
+    alertmanager_version: "0.25.0"
+    blackbox_exporter_version: "0.23.0"
+    node_exporter_version: "1.6.1"
+    postgres_exporter_version: "0.16.0"
+    patroni_exporter_version: "0.3.0"
+
+    prometheus_dir: /etc/prometheus
+    prometheus_data_dir: /var/lib/prometheus
+    prometheus_user: prometheus
+    prometheus_group: prometheus
+
+  roles:
+    - { role: node_exporter, when: "'all' in group_names" }
+
+- name: Install Prometheus and Alertmanager on Prometheus host
+  hosts: balancers
+  become: true
+  roles:
+    - role: prometheus
+
+- name: Install Postgres exporter on master and replica
+  hosts: master:replica
+  become: true
+  roles:
+    - role: postgres_exporter
+
+- name: Install Patroni exporter on master and replica
+  hosts: master:replica
+  become: true
+  roles:
+    - role: patroni_exporter
+
+- name: Install blackbox exporter on Prometheus host
+  hosts: balancers
+  become: true
+  tasks:
+    - name: Copy blackbox_exporter binary
+      copy:
+        src: roles/prometheus/files/blackbox_exporter
+        dest: /usr/local/bin/blackbox_exporter
+        mode: '0755'
+
+    - name: Configure blackbox exporter
+      template:
+        src: roles/prometheus/templates/blackbox.yml.j2
+        dest: /etc/prometheus/blackbox.yml
+      notify:
+        - restart blackbox exporter service
+
+    - name: Setup systemd for blackbox exporter
+      copy:
+        dest: /etc/systemd/system/blackbox_exporter.service
+        content: |
+          [Unit]
+          Description=Blackbox Exporter
+          After=network.target
+
+          [Service]
+          User={{ prometheus_user }}
+          Group={{ prometheus_group }}
+          ExecStart=/usr/local/bin/blackbox_exporter --config.file=/etc/prometheus/blackbox.yml
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify:
+        - daemon reload
+        - restart blackbox exporter service
+
+  handlers:
+    - name: daemon reload
+      systemd:
+        daemon_reload: yes
+
+    - name: restart blackbox exporter service
+      systemd:
+        name: blackbox_exporter
+        state: restarted
+        enabled: yes
+
+    - name: restart prometheus
+      systemd:
+        name: prometheus
+        state: restarted
+        enabled: yes
+
+    - name: restart alertmanager
+      systemd:
+        name: alertmanager
+        state: restarted
+        enabled: yes
