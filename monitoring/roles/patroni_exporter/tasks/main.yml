@@ -1,0 +1,29 @@
+---
+- name: Copy patroni_exporter binary
+  copy:
+    src: roles/patroni_exporter/files/patroni_exporter
+    dest: /usr/local/bin/patroni_exporter
+    mode: '0755'
+
+- name: Create patroni_exporter systemd service
+  copy:
+    dest: /etc/systemd/system/patroni_exporter.service
+    content: |
+      [Unit]
+      Description=Patroni Exporter
+      After=network.target
+
+      [Service]
+      User=root
+      Group=root
+      ExecStart=/usr/local/bin/patroni_exporter -l http://localhost:8008
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Start patroni_exporter
+  systemd:
+    name: patroni_exporter
+    state: started
+    enabled: yes
