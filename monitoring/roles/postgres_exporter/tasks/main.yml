@@ -16,7 +16,10 @@
       [Service]
       User=root
       Group=root
-      ExecStart=DATA_SOURCE_URI="localhost:5432/postgres?sslmode=disable" DATA_SOURCE_USER="postgres" DATA_SOURCE_PASS="secretpassword" /usr/local/bin/postgres_exporter --
+      Environment=DATA_SOURCE_URI=localhost:5432/postgres?sslmode=disable
+      Environment=DATA_SOURCE_USER=postgres
+      Environment=DATA_SOURCE_PASS=secretpassword
+      ExecStart=/usr/local/bin/postgres_exporter --web.listen-address=:9187 --web.telemetry-path=/metrics
       Restart=on-failure
 
       [Install]

@@ -16,7 +16,7 @@
     prometheus_group: prometheus
 
   roles:
-    - { role: node_exporter, when: "'all' in group_names" }
+    - role: node_exporter
 
 - name: Install Prometheus and Alertmanager on Prometheus host
   hosts: balancers

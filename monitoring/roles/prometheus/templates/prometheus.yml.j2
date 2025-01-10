@@ -5,36 +5,36 @@ scrape_configs:
   - job_name: node
     static_configs:
       - targets:
-        {% for host in groups['all'] %}
-          - "{{ hostvars[host].ansible_facts['hostname'] }}:9100"
-        {% endfor %}
+{% for host in groups['all'] %}
+        - "{{ hostvars[host]['inventory_hostname'] }}:9100"
+{% endfor %}
 
   - job_name: postgres
     static_configs:
       - targets:
-        {% if groups['master'] is defined and groups['replica'] is defined %}
-        {% for host in groups['master'] + groups['replica'] %}
-          - "{{ hostvars[host].ansible_facts['hostname'] }}:9187"
-        {% endfor %}
-        {% endif %}
+{% if groups['master'] is defined and groups['replica'] is defined %}
+{% for host in groups['master'] + groups['replica'] %}
+        - "{{ hostvars[host]['inventory_hostname'] }}:9187"
+{% endfor %}
+{% endif %}
 
   - job_name: patroni
     static_configs:
       - targets:
-        {% if groups['master'] is defined and groups['replica'] is defined %}
-        {% for host in groups['master'] + groups['replica'] %}
-          - "{{ hostvars[host].ansible_facts['hostname'] }}:8000"
-        {% endfor %}
-        {% endif %}
+{% if groups['master'] is defined and groups['replica'] is defined %}
+{% for host in groups['master'] + groups['replica'] %}
+        - "{{ hostvars[host]['inventory_hostname'] }}:8008"
+{% endfor %}
+{% endif %}
 
   - job_name: etcd
     static_configs:
       - targets:
-        {% if groups['etcd_cluster'] is defined %}
-        {% for host in groups['etcd_cluster'] %}
-          - "{{ hostvars[host].ansible_facts['hostname'] }}:2379"
-        {% endfor %}
-        {% endif %}
+{% if groups['etcd_cluster'] is defined %}
+{% for host in groups['etcd_cluster'] %}
+        - "{{ hostvars[host]['inventory_hostname'] }}:2379"
+{% endfor %}
+{% endif %}
 
   - job_name: blackbox
     metrics_path: /probe
@@ -42,14 +42,14 @@ scrape_configs:
       module: [http_2xx]
     dns_sd_configs:
       - names:
-        mzyatkov
+        - "mzyatkov"
         type: A
         port: 80
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - target_label: __address__
-        replacement: "{{ hostvars[groups['balancers'][0]].ansible_facts['hostname'] }}:9115"
+        replacement: "{{ hostvars[groups['balancers'][0]]['inventory_hostname'] }}:9115"
       - source_labels: [__meta_dns_name]
         target_label: __param_hostname
       - source_labels: [__meta_dns_name]
