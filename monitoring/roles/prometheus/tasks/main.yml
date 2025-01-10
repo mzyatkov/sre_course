@@ -42,6 +42,14 @@
     - "{{ prometheus_dir }}"
     - "{{ prometheus_data_dir }}"
 
+- name: Copy alert prometheus rules
+  template:
+    src: alerts.yml.j2
+    dest: "{{ prometheus_dir }}/alerts.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: '0644'
+
 - name: Configure Prometheus
   template:
     src: prometheus.yml.j2

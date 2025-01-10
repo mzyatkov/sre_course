@@ -1,0 +1,75 @@
+groups:
+- name: LatencyAlerts
+  rules:
+  - alert: HighLatency
+    expr: probe_duration_seconds{job="blackbox"} > 0.5
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High latency detected"
+      description: "The probe duration exceeds 500ms for the last 5 minutes."
+
+- name: ErrorAlerts
+  rules:
+  - alert: BlackboxProbeFailed
+    expr: count(probe_success{job="blackbox"} == 0)
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Blackbox probe failed"
+      description: "The blackbox probe has been failing for the last 5 minutes."
+
+- name: TrafficAlerts
+  rules:
+  - alert: HighNetworkTraffic
+    expr: rate(node_network_receive_bytes_total{job="node"}[5m]) > 10000000
+    for: 5m
+    labels:
+      severity: info
+    annotations:
+      summary: "High network traffic detected"
+      description: "The incoming network traffic exceeded 10 MB/s in the last 5 minutes."
+
+- name: SaturationAlerts
+  rules:
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m])) * 100) > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage detected"
+      description: "CPU usage is above 85% for the last 5 minutes."
+
+  - alert: HighMemoryUsage
+    expr: (node_memory_MemTotal_bytes{job="node"} - node_memory_MemAvailable_bytes{job="node"}) / node_memory_MemTotal_bytes{job="node"} * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage detected"
+      description: "Memory usage is above 85% for the last 5 minutes."
+
+- name: PostgresAlerts
+  rules:
+  - alert: PostgresWALSize
+    expr: pg_wal_size_bytes > 1048576000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Postgres wal size is too big"
+      description: "WAL size is over 1000 MB for the last 5 minutes."
+
+- name: EtcdAlerts
+  rules:
+  - alert: EtcdHighLeaderElectionCount
+    expr: increase(etcd_server_leader_changes_seen_total{job="etcd"}[5m]) > 3
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High leader election count in etcd"
+      description: "More than 3 leader elections in etcd occurred in the last 5 minutes."
