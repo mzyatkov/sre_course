@@ -61,7 +61,7 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-        - "https://176.109.82.213/swagger/index.html"
+        - "https://176.109.82.213/healthz/live"
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

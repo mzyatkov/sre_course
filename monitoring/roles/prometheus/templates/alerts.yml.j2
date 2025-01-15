@@ -1,75 +1,42 @@
 groups:
-- name: LatencyAlerts
+- name: nginx-ingress-alerts
   rules:
+  # 1. Задержка (Latency)
   - alert: HighLatency
-    expr: probe_duration_seconds{job="blackbox"} > 0.5
+    expr: histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (le)) > 0.5
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "High latency detected"
-      description: "The probe duration exceeds 500ms for the last 5 minutes."
+      summary: "Высокая задержка запросов NGINX Ingress"
+      description: "95-й процентиль задержки запросов превышает установленный порог в течение 5 минут."
 
-- name: ErrorAlerts
-  rules:
-  - alert: BlackboxProbeFailed
-    expr: count(probe_success{job="blackbox"} == 0)
+  # 2. Ошибки (Errors)
+  - alert: HighErrorRate
+    expr: sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m])) by (ingress) / sum(rate(nginx_ingress_controller_requests[5m])) by (ingress) > 0.05
     for: 5m
     labels:
       severity: critical
     annotations:
-      summary: "Blackbox probe failed"
-      description: "The blackbox probe has been failing for the last 5 minutes."
+      summary: "Высокий процент ошибок NGINX Ingress"
+      description: "Процент запросов, завершившихся ошибкой (5xx), превышает 5% в течение 5 минут."
 
-- name: TrafficAlerts
-  rules:
-  - alert: HighNetworkTraffic
-    expr: rate(node_network_receive_bytes_total{job="node"}[5m]) > 10000000
+  # 3. Трафик (Traffic)
+  - alert: HighTraffic
+    expr: sum(rate(nginx_ingress_controller_requests[1m])) by (ingress) > 1000
     for: 5m
     labels:
       severity: info
     annotations:
-      summary: "High network traffic detected"
-      description: "The incoming network traffic exceeded 10 MB/s in the last 5 minutes."
+      summary: "Высокий уровень трафика через NGINX Ingress"
+      description: "Число запросов через Ingress превышает 1000 в минуту в течение 5 минут."
 
-- name: SaturationAlerts
-  rules:
-  - alert: HighCPUUsage
-    expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m])) * 100) > 85
+  # 4. Насыщенность системы (Saturation)
+  - alert: HighCpuUsage
+    expr: sum(rate(nginx_ingress_controller_nginx_process_cpu_seconds_total[1m])) by (pod) > 0.8
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "High CPU usage detected"
-      description: "CPU usage is above 85% for the last 5 minutes."
-
-  - alert: HighMemoryUsage
-    expr: (node_memory_MemTotal_bytes{job="node"} - node_memory_MemAvailable_bytes{job="node"}) / node_memory_MemTotal_bytes{job="node"} * 100 > 85
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High memory usage detected"
-      description: "Memory usage is above 85% for the last 5 minutes."
-
-- name: PostgresAlerts
-  rules:
-  - alert: PostgresWALSize
-    expr: pg_wal_size_bytes > 1048576000
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Postgres wal size is too big"
-      description: "WAL size is over 1000 MB for the last 5 minutes."
-
-- name: EtcdAlerts
-  rules:
-  - alert: EtcdHighLeaderElectionCount
-    expr: increase(etcd_server_leader_changes_seen_total{job="etcd"}[5m]) > 3
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "High leader election count in etcd"
-      description: "More than 3 leader elections in etcd occurred in the last 5 minutes."
+      summary: "Высокая загрузка CPU на NGINX Ingress"
+      description: "Использование CPU выше 80% в течение 5 минут."
